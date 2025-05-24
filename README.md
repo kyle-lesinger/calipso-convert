@@ -10,15 +10,15 @@ A minimal, reproducible Python package for converting CALIPSO HDF4 aerosol data 
 
 ## Features
 
-* **Single CLI entry point (`cali-convert`)** for HDF4 → HDF5 conversion; future releases will chain subsequent steps.
-* **Vendored or conda-managed `h4toh5convert` binary**, so users need not install HDF4/HDF5 tools separately.
+* **Single CLI entry point (`calipso-convert`)** for HDF4 → HDF5 conversion; future releases will chain subsequent steps.
+* **Vendored or conda-managed `h4toh5convert` binary**, so users need not install HDF4/HDF5 tools separately. Binary obtained from [HDF Group](https://support.hdfgroup.org/downloads/h4h5tools/h4h5tools_2_2_5.html)
 * **Configurable ASCII exporter** supports any 3D variable (e.g., `Samples_Averaged`, `Extinction_Coefficient_532_Mean`).
 * **PDAL integration** with pre-defined JSON pipelines:
 
-  * `pipe.json` for reading text and writing LAS with extra dimensions.
-  * `copc.json` for converting LAS to Cloud-Optimized Point Cloud (COPC).
+  * `h5tolas.json` for reading text and writing LAS with extra dimensions.
+  * `las2copc.json` for converting LAS to Cloud-Optimized Point Cloud (COPC).
 * **Conda environment specification** (`environment.yml`) for reproducibility across platforms.
-* **Editable install** via `pip install -e .`, enabling rapid development and collaboration.
+* **Editable install** via `uv pip install -e .`, enabling rapid development and collaboration.
 
 ---
 
@@ -48,7 +48,7 @@ A minimal, reproducible Python package for converting CALIPSO HDF4 aerosol data 
 3. **Install the package in editable mode**:
 
    ```bash
-   pip install -e .
+   uv pip install -e .
    ```
 
 4. **Verify the CLI**:

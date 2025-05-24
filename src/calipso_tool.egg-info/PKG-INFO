@@ -3,8 +3,10 @@ Name: calipso_tool
 Version: 0.1.0
 Summary: CALIPSO HDF workflows: HDF4→HDF5→LAS→COPC
 Author-email: Kyle Lesinger <kdl0040@uah.edu>
+License-File: LICENSE
 Requires-Dist: numpy
 Requires-Dist: pandas
 Requires-Dist: laspy
 Requires-Dist: h5py
 Requires-Dist: pdal
+Dynamic: license-file
