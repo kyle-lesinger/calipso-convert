@@ -13,6 +13,7 @@ dependencies:
   - python-pdal
   - pip
   - uv
+  - ipykernel
   - pip:
     - laspy
     - click
