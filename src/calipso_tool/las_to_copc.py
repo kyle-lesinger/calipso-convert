@@ -3,6 +3,9 @@ import json
 from pathlib import Path
 from typing import Optional, Union
 import tempfile
+import os # For os.path.getsize
+# Import the package-level logger
+from . import logger
 
 
 def las_to_copc(
@@ -72,45 +75,45 @@ def las_to_copc(
     
     try:
         # Run PDAL pipeline
-        print(f"Converting {input_las} to COPC format...")
-        
+        logger.info("Converting %s to COPC format...", input_las)
+
         result = subprocess.run(
             ["pdal", "pipeline", temp_pipeline],
             capture_output=True,
             text=True,
             check=True
         )
-        
-        if result.returncode == 0:
-            print(f"✓ Created: {output_copc}")
+
+        logger.info("✓ Created: %s", output_copc)
+
+        # Get file info for logging
+        # Not capturing pdal info output for logging, but keeping size comparison
+        try:
+            input_size_bytes = os.path.getsize(input_las)
+            output_size_bytes = os.path.getsize(output_copc)
+            input_size_mb = input_size_bytes / (1024 * 1024)
+            output_size_mb = output_size_bytes / (1024 * 1024)
+            if input_size_bytes > 0: # Avoid division by zero
+                compression_ratio = (1 - output_size_bytes / input_size_bytes) * 100
+                logger.info("File sizes: Input LAS: %.2f MB, Output COPC: %.2f MB, Compression: %.1f%%",
+                            input_size_mb, output_size_mb, compression_ratio)
+            else:
+                logger.info("File sizes: Input LAS: %.2f MB, Output COPC: %.2f MB (Input size is 0, cannot calculate compression)",
+                            input_size_mb, output_size_mb)
+        except Exception as size_error:
+            logger.warning("Could not retrieve or calculate file sizes: %s", size_error)
             
-            # Get file info
-            info_result = subprocess.run(
-                ["pdal", "info", str(output_copc), "--summary"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            
-            if info_result.returncode == 0:
-                # Parse output size info
-                import os
-                input_size = os.path.getsize(input_las) / (1024 * 1024)  # MB
-                output_size = os.path.getsize(output_copc) / (1024 * 1024)  # MB
-                compression_ratio = (1 - output_size / input_size) * 100
-                
-                print(f"\nFile sizes:")
-                print(f"  Input LAS: {input_size:.2f} MB")
-                print(f"  Output COPC: {output_size:.2f} MB")
-                print(f"  Compression: {compression_ratio:.1f}%")
-        
         return output_copc
-        
+
     except subprocess.CalledProcessError as e:
-        print(f"✗ PDAL pipeline failed: {e}")
-        print(f"Error output: {e.stderr}")
+        logger.error("✗ PDAL COPC conversion pipeline failed for %s. Command: '%s'. Exit code: %d.",
+                     input_las, e.cmd, e.returncode, exc_info=True)
+        if e.stdout:
+            logger.error("PDAL stdout:\n%s", e.stdout)
+        if e.stderr:
+            logger.error("PDAL stderr:\n%s", e.stderr)
         raise
-    
+
     finally:
         # Clean up temporary pipeline file
         Path(temp_pipeline).unlink(missing_ok=True)
@@ -161,30 +164,37 @@ def batch_las_to_copc(
     """
     directory = Path(directory)
     las_files = list(directory.glob(pattern))
-    
-    print(f"Found {len(las_files)} LAS files to convert")
-    
+
+    logger.info("Found %d LAS files to convert in %s matching '%s'", len(las_files), directory, pattern)
+
     successful = []
     failed = []
-    
+
     for las_file in las_files:
         copc_file = las_file.parent / f"{las_file.stem}.copc.laz"
-        
+
         if skip_existing and copc_file.exists():
-            print(f"⏭️  Skipping {las_file.name} (COPC already exists)")
+            logger.info("⏭️  Skipping %s (COPC already exists at %s)", las_file.name, copc_file)
             successful.append(copc_file)
             continue
-        
+
         try:
-            result = las_to_copc_pipeline(las_file)
+            logger.info("Processing file %s for COPC conversion...", las_file.name)
+            result = las_to_copc_pipeline(las_file) # This already logs its internal steps
             successful.append(result)
+            logger.info("Successfully converted %s to %s", las_file.name, result)
         except Exception as e:
+            # las_to_copc_pipeline's internal las_to_copc would have logged the detailed PDAL error
+            logger.error("Failed to convert %s: %s", las_file.name, e, exc_info=True)
             failed.append((las_file, str(e)))
-    
-    print(f"\nBatch conversion complete:")
-    print(f"  Successful: {len(successful)}")
-    print(f"  Failed: {len(failed)}")
-    
+
+    logger.info("Batch COPC conversion complete for directory %s:", directory)
+    logger.info("  Successfully converted: %d files", len(successful))
+    logger.info("  Failed conversions: %d files", len(failed))
+    if failed:
+        for f_file, err_msg in failed:
+            logger.info("    - %s: %s", f_file.name, err_msg)
+
     return successful, failed
 
 
