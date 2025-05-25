@@ -13,7 +13,10 @@ dependencies = [
   "laspy",
   "h5py",
   "pdal",
-  "ipykernel"
+  "ipykernel",
+  "click",
+  "earthaccess",
+  "rioxarray"
 ]
 
 [project.scripts]

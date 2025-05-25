@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional, Union
 from .h5_to_txt import h5_to_txt
 from .txt_to_las import txt_to_las, txt_to_las_with_json
+from .las_to_copc import las_to_copc_pipeline
 
 def h4_to_h5(in_h4: Path, out_h5: Path):
     # locate the vendored binary
@@ -185,4 +186,100 @@ def h4_to_las(
     return output_las, h5_file, txt_file
 
 
-__all__ = ['h4_to_h5', 'h5_to_txt', 'h4_to_txt', 'txt_to_las', 'txt_to_las_pipeline', 'h4_to_las']
+def h4_to_copc(
+    input_h4: Union[str, Path],
+    output_copc: Optional[Union[str, Path]] = None,
+    variable_name: str = "var_to_grab",
+    altitude_units: str = "km",
+    keep_intermediates: bool = False
+) -> tuple[Path, Optional[Path], Optional[Path], Optional[Path], Optional[Path]]:
+    """
+    Complete pipeline: HDF4 → HDF5 → Text → LAS → COPC
+    
+    Parameters:
+    -----------
+    input_h4 : str or Path
+        Path to input HDF4 file
+    output_copc : str or Path, optional
+        Path to output COPC file. If None, uses same name as input with .copc.laz extension
+    variable_name : str, default="var_to_grab"
+        Name of the variable to extract from HDF5 file
+    altitude_units : str, default="km"
+        Units of altitude in the HDF5 file. If "km", will convert to meters.
+    keep_intermediates : bool, default=False
+        Whether to keep intermediate files (HDF5, text, LAS)
+    
+    Returns:
+    --------
+    tuple[Path, Optional[Path], Optional[Path], Optional[Path], Optional[Path]]
+        Paths to COPC file, HDF5 file (if kept), text file (if kept), LAS file (if kept)
+    """
+    input_h4 = Path(input_h4)
+    
+    # Generate intermediate filenames
+    h5_file = input_h4.with_suffix('.h5')
+    txt_file = input_h4.with_suffix('.txt')
+    las_file = input_h4.with_suffix('.las')
+    
+    if output_copc is None:
+        output_copc = input_h4.parent / f"{input_h4.stem}.copc.laz"
+    else:
+        output_copc = Path(output_copc)
+    
+    try:
+        # Step 1-3: HDF4 → HDF5 → Text → LAS
+        print("Running HDF4 → LAS pipeline...")
+        las_result, h5_kept, txt_kept = h4_to_las(
+            input_h4, 
+            las_file, 
+            variable_name, 
+            altitude_units, 
+            keep_intermediates=True  # Keep for now, clean up later
+        )
+        
+        # Step 4: LAS → COPC
+        print(f"\nStep 4: Converting LAS to COPC...")
+        las_to_copc_pipeline(las_file, output_copc)
+        print(f"  ✓ Created: {output_copc}")
+        
+        print(f"\n{'='*50}")
+        print(f"Pipeline complete! Final output: {output_copc}")
+        print(f"{'='*50}")
+        
+    except Exception as e:
+        print(f"\n✗ Pipeline failed: {e}")
+        # Clean up any intermediate files on failure
+        if not keep_intermediates:
+            for f in [h5_file, txt_file, las_file]:
+                if f.exists():
+                    f.unlink()
+        raise
+    
+    # Clean up intermediate files if requested
+    if not keep_intermediates:
+        files_to_remove = []
+        
+        # Remove intermediate files
+        for f, name in [(h5_file, "HDF5"), (txt_file, "text"), (las_file, "LAS")]:
+            if f.exists():
+                f.unlink()
+                files_to_remove.append(name)
+        
+        if files_to_remove:
+            print(f"\nCleaned up intermediate files: {', '.join(files_to_remove)}")
+        
+        return output_copc, None, None, None
+    else:
+        return output_copc, h5_file, txt_file, las_file
+
+
+__all__ = [
+    'h4_to_h5', 
+    'h5_to_txt', 
+    'h4_to_txt', 
+    'txt_to_las', 
+    'txt_to_las_pipeline', 
+    'h4_to_las',
+    'las_to_copc_pipeline',
+    'h4_to_copc'
+]
