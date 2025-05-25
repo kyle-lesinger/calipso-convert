@@ -17,4 +17,6 @@ dependencies:
   - pip:
     - laspy
     - click
+    - earthaccess
+    - rioxarray
 

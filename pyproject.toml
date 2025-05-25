@@ -14,7 +14,9 @@ dependencies = [
   "h5py",
   "pdal",
   "ipykernel",
-  "click"
+  "click",
+  "earthaccess",
+  "rioxarray"
 ]
 
 [project.scripts]
