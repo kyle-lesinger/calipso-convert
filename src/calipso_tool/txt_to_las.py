@@ -3,12 +3,14 @@ import json
 from pathlib import Path
 from typing import Optional, Union
 import tempfile
+# Import the package-level logger
+from . import logger
 
 
 def txt_to_las(
     input_txt: Union[str, Path],
     output_las: Optional[Union[str, Path]] = None,
-    variable_name: str = "var_to_grab",
+    variable_name: str = "Extinction_Coefficient_532",
     scale_x: float = 1e-5,
     scale_y: float = 1e-5,
     scale_z: float = 0.01,
@@ -75,38 +77,42 @@ def txt_to_las(
     
     try:
         # Run PDAL pipeline
-        print(f"Converting {input_txt} to LAS format...")
-        print(f"Extra dimension: {variable_name}")
-        
+        logger.info("Converting %s to LAS format...", input_txt)
+        logger.info("Extra dimension: %s", variable_name)
+
         result = subprocess.run(
             ["pdal", "pipeline", temp_pipeline],
             capture_output=True,
             text=True,
             check=True
         )
-        
-        if result.returncode == 0:
-            print(f"✓ Created: {output_las}")
-            
-            # Get file info
-            info_result = subprocess.run(
-                ["pdal", "info", str(output_las), "--summary"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            
-            if info_result.returncode == 0:
-                print(f"LAS file info:")
-                print(info_result.stdout)
+
+        # subprocess.run with check=True will raise CalledProcessError on non-zero exit,
+        # so explicit result.returncode == 0 check is often redundant here.
+        logger.info("✓ Created: %s", output_las)
+
+        # Get file info - decide if this should be info or debug level
+        # For now, let's keep it as info if it was previously printed.
+        # Consider using logger.debug for verbose output like this in the future.
+        info_result = subprocess.run(
+            ["pdal", "info", str(output_las), "--summary"],
+            capture_output=True,
+            text=True,
+            check=True # This will also raise an error if pdal info fails
+        )
+        logger.info("LAS file info for %s:\n%s", output_las, info_result.stdout)
         
         return output_las
-        
+
     except subprocess.CalledProcessError as e:
-        print(f"✗ PDAL pipeline failed: {e}")
-        print(f"Error output: {e.stderr}")
+        logger.error("✗ PDAL pipeline failed for %s. Command: '%s'. Exit code: %d.",
+                     input_txt, e.cmd, e.returncode, exc_info=True)
+        if e.stdout:
+            logger.error("PDAL stdout:\n%s", e.stdout)
+        if e.stderr:
+            logger.error("PDAL stderr:\n%s", e.stderr)
         raise
-    
+
     finally:
         # Clean up temporary pipeline file
         Path(temp_pipeline).unlink(missing_ok=True)
@@ -115,7 +121,7 @@ def txt_to_las(
 def txt_to_las_with_json(
     input_txt: Union[str, Path],
     output_las: Optional[Union[str, Path]] = None,
-    variable_name: str = "var_to_grab",
+    variable_name: str = "Extinction_Coefficient_532",
     pipeline_json: Optional[Union[str, Path]] = None
 ) -> Path:
     """
@@ -187,9 +193,9 @@ def txt_to_las_with_json(
     
     try:
         # Run PDAL pipeline
-        print(f"Converting {input_txt} to LAS format using {pipeline_json.name}...")
-        print(f"Extra dimension: {variable_name}")
-        
+        logger.info("Converting %s to LAS format using %s...", input_txt, pipeline_json.name)
+        logger.info("Extra dimension: %s", variable_name)
+
         result = subprocess.run(
             ["pdal", "pipeline", temp_pipeline],
             capture_output=True,
@@ -197,16 +203,19 @@ def txt_to_las_with_json(
             check=True
         )
         
-        if result.returncode == 0:
-            print(f"✓ Created: {output_las}")
+        logger.info("✓ Created: %s", output_las)
         
         return output_las
-        
+
     except subprocess.CalledProcessError as e:
-        print(f"✗ PDAL pipeline failed: {e}")
-        print(f"Error output: {e.stderr}")
+        logger.error("✗ PDAL pipeline failed for %s using %s. Command: '%s'. Exit code: %d.",
+                     input_txt, pipeline_json.name, e.cmd, e.returncode, exc_info=True)
+        if e.stdout:
+            logger.error("PDAL stdout:\n%s", e.stdout)
+        if e.stderr:
+            logger.error("PDAL stderr:\n%s", e.stderr)
         raise
-    
+
     finally:
         # Clean up temporary pipeline file
         Path(temp_pipeline).unlink(missing_ok=True)
@@ -219,8 +228,8 @@ def main():
     parser = argparse.ArgumentParser(description="Convert text file to LAS format using PDAL")
     parser.add_argument("input_txt", help="Path to input text file")
     parser.add_argument("-o", "--output", help="Path to output LAS file (optional)")
-    parser.add_argument("-v", "--variable", default="var_to_grab",
-                        help="Name of variable (default: var_to_grab)")
+    parser.add_argument("-v", "--variable", default="Extinction_Coefficient_532",
+                        help="Name of variable (default: Extinction_Coefficient_532)")
     parser.add_argument("-p", "--pipeline", help="Path to PDAL pipeline JSON file")
     parser.add_argument("--scale-x", type=float, default=1e-5,
                         help="Scale factor for X coordinate (default: 1e-5)")

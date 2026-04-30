@@ -16,11 +16,13 @@ dependencies = [
   "ipykernel",
   "click",
   "earthaccess",
-  "rioxarray"
+  "rioxarray",
+  "pytest",
+  "pytest-mock"
 ]
 
 [project.scripts]
-cali-convert = "calipso_tool.cli:main"
+cali-convert = "calipso_tool.cli:cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/calipso_tool"]

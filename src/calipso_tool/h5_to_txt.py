@@ -3,12 +3,14 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from typing import Optional, Union
+# Import the package-level logger
+from . import logger
 
 
 def h5_to_txt(
     input_h5: Union[str, Path],
     output_txt: Optional[Union[str, Path]] = None,
-    variable_name: str = "var_to_grab",
+    variable_name: str = "Extinction_Coefficient_532",
     altitude_units: str = "km"
 ) -> Path:
     """
@@ -69,10 +71,10 @@ def h5_to_txt(
     
     # Save as space-delimited ASCII
     df.to_csv(output_txt, sep=" ", index=False, header=True)
-    
-    print(f"Converted {input_h5} to {output_txt}")
-    print(f"Output contains {len(df)} points")
-    
+
+    logger.info("Converted %s to %s", input_h5, output_txt)
+    logger.info("Output contains %d points", len(df))
+
     return output_txt
 
 
@@ -83,8 +85,8 @@ def main():
     parser = argparse.ArgumentParser(description="Convert HDF5 file to text format")
     parser.add_argument("input_h5", help="Path to input HDF5 file")
     parser.add_argument("-o", "--output", help="Path to output text file (optional)")
-    parser.add_argument("-v", "--variable", default="var_to_grab",
-                        help="Name of variable to extract (default: var_to_grab)")
+    parser.add_argument("-v", "--variable", default="Extinction_Coefficient_532",
+                        help="Name of variable to extract (default: Extinction_Coefficient_532)")
     parser.add_argument("--alt-units", default="km", choices=["km", "m"],
                         help="Altitude units in HDF5 file (default: km)")
     

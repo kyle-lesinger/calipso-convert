@@ -1,0 +1,12 @@
+{
+  "pipeline": [
+    {
+      "type": "readers.text",
+      "filename": "placeholder.txt"
+    },
+    {
+      "type": "writers.las",
+      "filename": "placeholder.las"
+    }
+  ]
+}
